@@ -66,8 +66,51 @@
 // ============================================================
 
 function computeFitness(car) {
-  // YOUR CODE GOES HERE
-  // Replace this with your fitness rules.
+  // 1. GRASS IS TOXIC – massive immediate penalty
+  let fitness = -car.grassTime * 6.0;
 
-  return 0;
+  // 2. PROGRESS REWARD – but only if the car is mostly clean
+  if (car.grassTime < 10) {
+    // Clean driving – full reward
+    fitness += car.progress * 5.0;
+  } else if (car.grassTime < 30) {
+    // Some grass – heavily discount progress
+    let discount = 1 - (car.grassTime - 10) / 20; // from 1 to 0
+    fitness += car.progress * 2.0 * discount;
+  } else {
+    // Too much grass – progress is worth almost nothing
+    fitness += car.progress * 0.2;
+  }
+
+  // 3. LAP BONUS – only for clean laps
+  if (car.laps >= 1 && car.grassTime < 15) {
+    fitness += 4000; // big reward for a legitimate lap
+  }
+
+  // 4. SPEED REWARD – only when making clean progress
+  if (car.grassTime < 20 && car.progress > 30) {
+    fitness += car.avgSpeed * 35;
+  }
+
+  // 5. TIME ALIVE – almost worthless (prevents farming)
+  fitness += car.timeAlive * 0.02;
+
+  // 6. ANTI-CIRCLE – detect high grass with moderate progress
+  if (car.grassTime > 40 && car.progress > 20) {
+    fitness -= 3000; // kill off grass-loopers
+  }
+
+  // 7. PROGRESS EFFICIENCY – fast clean progress gets extra bonus
+  if (car.grassTime < 10 && car.progress > 100) {
+    let efficiency = car.progress / (car.timeAlive + 1);
+    fitness += efficiency * 80;
+  }
+
+  // 8. ENSURE EXPLORATION – don't let cars just sit still
+  if (car.timeAlive > 120 && car.progress < 3) {
+    fitness -= 2000; // penalise stationary cars
+  }
+
+  // Return (can be negative – that's fine, selection will filter)
+  return fitness;
 }
